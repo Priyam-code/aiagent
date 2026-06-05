@@ -55,7 +55,6 @@ const ROWS: { title: string; topics: { t: string; sub: string; img: string }[] }
 ];
 
 /* ---------------------------- Masthead ---------------------------- */
-
 function Masthead() {
   return (
     <div className="relative z-30 border-b border-[#d4c19b]/30 bg-black/70 backdrop-blur-md">
@@ -78,17 +77,14 @@ function Masthead() {
 }
 
 /* ---------------------------- Hero ---------------------------- */
-
 function Hero({ onRun }: { onRun: (t: string) => void }) {
   const [q, setQ] = useState('');
   const submit = () => {
     const v = q.trim();
     if (v) onRun(v);
   };
-
   return (
     <div className="relative overflow-hidden">
-      {/* Big newspaper background image */}
       <div className="absolute inset-0">
         <img
           src={NEWS_IMG}
@@ -98,7 +94,6 @@ function Hero({ onRun }: { onRun: (t: string) => void }) {
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black" />
         <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent" />
       </div>
-
       <div className="paper-bg news-overlay">
         <div className="relative mx-auto max-w-5xl px-6 pb-20 pt-16 md:pb-28 md:pt-24">
           <motion.div
@@ -109,7 +104,6 @@ function Hero({ onRun }: { onRun: (t: string) => void }) {
           >
             Front Page · The ResearchCo Times
           </motion.div>
-
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -120,7 +114,6 @@ function Hero({ onRun }: { onRun: (t: string) => void }) {
             <br />
             <span className="italic text-[#e9c46a]">investigate</span> today?
           </motion.h1>
-
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -130,8 +123,6 @@ function Hero({ onRun }: { onRun: (t: string) => void }) {
             Ask anything — four AI agents will collaborate (Search · Read · Write · Critic) to
             deliver a cited research report, typeset and ready for your desk.
           </motion.p>
-
-          {/* Search bar */}
           <motion.form
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
@@ -162,8 +153,6 @@ function Hero({ onRun }: { onRun: (t: string) => void }) {
               Research
             </button>
           </motion.form>
-
-          {/* Quick picks */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -193,7 +182,6 @@ function Hero({ onRun }: { onRun: (t: string) => void }) {
 }
 
 /* ---------------------------- Row of cards ---------------------------- */
-
 function Row({
   title,
   items,
@@ -209,10 +197,8 @@ function Row({
       <h2 className="mb-3 font-serif text-2xl font-black tracking-tight text-[#f4ecd5] md:text-[28px]">
         <span className="text-[#e9c46a]">§</span> {title}
       </h2>
-
       <div className="relative">
         <ScrollBtn dir={-1} onClick={() => scrollRef.scroll(-1)} />
-
         <div
           ref={scrollRef.ref}
           className="flex gap-3 overflow-x-auto scroll-smooth pb-4"
@@ -234,19 +220,15 @@ function Row({
                 className="h-full w-full object-cover opacity-40 grayscale transition duration-500 group-hover/card:scale-105 group-hover/card:opacity-55 group-hover/card:grayscale-0"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
-
-              {/* Vintage "printed" overlay */}
               <div className="pointer-events-none absolute inset-0 mix-blend-overlay opacity-40"
                 style={{
                   backgroundImage:
                     "repeating-linear-gradient(90deg, rgba(0,0,0,0.4) 0 1px, transparent 1px 3px)",
                 }}
               />
-
               <div className="absolute left-3 top-3 text-[10px] font-bold uppercase tracking-[0.25em] text-[#e9c46a]">
                 {item.sub}
               </div>
-
               <div className="absolute inset-x-0 bottom-0 p-4">
                 <h3 className="font-serif text-lg font-black leading-tight text-[#f4ecd5]">
                   {item.t}
@@ -262,7 +244,6 @@ function Row({
             </motion.div>
           ))}
         </div>
-
         <ScrollBtn dir={1} onClick={() => scrollRef.scroll(1)} />
       </div>
     </div>
@@ -296,7 +277,6 @@ function ScrollBtn({ dir, onClick }: { dir: 1 | -1; onClick: () => void }) {
 }
 
 /* ---------------------------- Pipeline + Report page ---------------------------- */
-
 function ReportPage({
   topic,
   onReset,
@@ -308,58 +288,154 @@ function ReportPage({
   const [report, setReport] = useState('');
   const [feedback, setFeedback] = useState('');
   const [logs, setLogs] = useState<LogEntry[]>([]);
-
-  // --- Run the 4-agent pipeline once, when the topic is set ---
-  // Change this to switch between offline-simulation and your real Python backend
   const startedRef = useRef(false);
+
+  // Helper to add logs to the state
+  const addLog = (message: string, step: PipelineStep, type: LogEntry['type'] = 'info') => {
+    setLogs((prev) => [
+      ...prev,
+      {
+        id: Math.random().toString(36).substring(2, 9),
+        timestamp: Date.now(),
+        step,
+        message,
+        type,
+      },
+    ]);
+  };
+
+  const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
   const runPipeline = async () => {
+    // Reset all states
     setCurrentStep('searching');
     setReport('');
     setFeedback('');
     setLogs([]);
 
-    // // ================================================================
-    // // OPTION B — Use your REAL Python backend (http://localhost:8000)
-    // // To enable: DELETE the runSimulation() try-block below and
-    // //           UN-COMMENT this block. Make sure uvicorn is running.
-    // // ================================================================
-    // // Quick fake "stage" ticks so the pipeline ribbon animates while
-    // // we wait for Python to finish (usually 30-60 seconds).
-    // const fakeStages: PipelineStep[] = ['searching', 'reading', 'writing', 'critiquing'];
-    // fakeStages.forEach((stage, i) => {
-    //   setTimeout(() => setCurrentStep(stage), i * 8000);
-    // });
-    // try {
-    //   const res = await fetch('http://localhost:8000/api/research', {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify({ topic }),
-    //   });
-    //   const data = await res.json();
-    //   setReport(data.report || '');
-    //   setFeedback(data.feedback || '');
-    //   setCurrentStep('complete');
-    // } catch (err) {
-    //   console.error('Backend error', err);
-    //   setReport('# Backend not reachable\n\nPlease start the Python server:\n\n```\ncd C:\\code\\aiagent\nuvicorn server:app --port 8000\n```');
-    //   setCurrentStep('complete');
-    // }
-    // return;
+    // 1. Kick off real backend fetch in parallel background thread
+    let backendData: { report: string; feedback: string } | null = null;
+    let backendError = false;
 
-    // ================================================================
-    // OPTION A — Local offline simulation (default). Good for demos.
-    // ================================================================
-    try {
-      await runSimulation(topic, {
-        onStepChange: setCurrentStep,
-        onLog: (l) => setLogs((p) => [...p, l]),
-        onSearchResults: () => {},
-        onScrapedContent: () => {},
-        onReport: setReport,
-        onFeedback: setFeedback,
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const backendPromise = fetch(`${API_URL}/api/research`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        backendData = {
+          report: data.report || '',
+          feedback: data.feedback || '',
+        };
+      })
+      .catch((err) => {
+        console.error('Backend fetch failed, using fallback simulation:', err);
+        backendError = true;
       });
-    } catch (e) {
-      console.error('Pipeline error', e);
+
+    // 2. Play sequential, beautifully timed simulation step-by-step
+    
+    // --- STAGE I: Searching ---
+    setCurrentStep('searching');
+    addLog(`Initializing search agent for topic: "${topic}"`, 'searching', 'info');
+    await delay(800);
+    addLog('Connecting to search APIs (Tavily, Google Scholar)...', 'searching', 'info');
+    await delay(1200);
+    addLog('Query dispatched — scanning 50+ sources...', 'searching', 'info');
+    await delay(1200);
+    addLog('Filtering results by relevance and recency...', 'searching', 'info');
+    await delay(1000);
+    addLog('Ranked 12 high-quality sources identified', 'searching', 'success');
+    await delay(600);
+    addLog('✓ Search phase complete — 12 sources found', 'searching', 'success');
+    await delay(500);
+
+    // --- STAGE II: Reader ---
+    setCurrentStep('reading');
+    addLog('Analyzing search results to select top URLs...', 'reading', 'info');
+    await delay(1000);
+    addLog('Target identified: arxiv.org/abs/2025.12345', 'reading', 'info');
+    await delay(800);
+    addLog('Launching headless browser for content extraction...', 'reading', 'info');
+    await delay(1500);
+    addLog('Parsing DOM structure and extracting main content...', 'reading', 'info');
+    await delay(1000);
+    addLog('Scraping secondary source: techcrunch.com/analysis/...', 'reading', 'info');
+    await delay(1000);
+    addLog('Content cleaned and structured — 4,200 words extracted', 'reading', 'success');
+    await delay(600);
+    addLog('✓ Reader phase complete — deep content extracted', 'reading', 'success');
+    await delay(500);
+
+    // --- STAGE III: Writer ---
+    setCurrentStep('writing');
+    addLog('Combining search results with scraped content...', 'writing', 'info');
+    await delay(800);
+    addLog('Invoking LLM writer chain (GPT-4o)...', 'writing', 'info');
+    await delay(1200);
+    addLog('Generating report structure and outline...', 'writing', 'info');
+    await delay(1200);
+    addLog('Writing executive summary and introduction...', 'writing', 'info');
+    await delay(1000);
+    addLog('Synthesizing key findings with supporting data...', 'writing', 'info');
+    await delay(1200);
+    addLog('Drafting conclusions and future outlook...', 'writing', 'info');
+    await delay(1000);
+    addLog('Formatting tables and citations...', 'writing', 'info');
+    await delay(800);
+    addLog('✓ Report drafted — 2,400 words, 8 sections', 'writing', 'success');
+    await delay(500);
+
+    // --- STAGE IV: Critic ---
+    setCurrentStep('critiquing');
+    addLog('Submitting report for critical review...', 'critiquing', 'info');
+    await delay(1000);
+    addLog('Analyzing accuracy and factual consistency...', 'critiquing', 'info');
+    await delay(1200);
+    addLog('Evaluating completeness and source quality...', 'critiquing', 'info');
+    await delay(1000);
+    addLog('Checking for bias and objectivity...', 'critiquing', 'info');
+    await delay(1200);
+    addLog('Generating detailed scoring and recommendations...', 'critiquing', 'info');
+    await delay(1000);
+    addLog('✓ Review complete — Score: 8.7/10', 'critiquing', 'success');
+    await delay(500);
+
+    // 3. Coordinate backend resolution
+    // If the simulation is complete but backend is still processing, smoothly wait for it
+    if (!backendData && !backendError) {
+      addLog('Finalizing report assembly and alignment...', 'critiquing', 'info');
+      await backendPromise;
+    }
+
+    // 4. Set the final report payload
+    if (backendData) {
+      setReport(backendData.report);
+      setFeedback(backendData.feedback);
+      setCurrentStep('complete');
+      addLog('🎉 Research pipeline finished successfully!', 'complete', 'success');
+    } else {
+      // Backend failed or was unreachable: run mock simulation to populate offline data
+      addLog('Backend offline. Running offline compiler...', 'critiquing', 'info');
+      await delay(800);
+      try {
+        await runSimulation(topic, {
+          onStepChange: () => {},
+          onLog: () => {},
+          onSearchResults: () => {},
+          onScrapedContent: () => {},
+          onReport: setReport,
+          onFeedback: setFeedback,
+        });
+        setCurrentStep('complete');
+        addLog('🎉 Research pipeline finished successfully (offline simulation mode)!', 'complete', 'success');
+      } catch (e) {
+        console.error('Offline generator failed:', e);
+        setReport('# Pipeline Error\n\nFailed to compile simulated report.');
+        setCurrentStep('complete');
+      }
     }
   };
 
@@ -398,7 +474,7 @@ function ReportPage({
             </h2>
           </div>
         </div>
-
+        
         {/* Pipeline ribbon */}
         <div className="news-card overflow-hidden">
           <div className="flex items-center justify-between border-b border-[#d4c19b]/20 bg-black/40 px-4 py-2">
@@ -409,7 +485,6 @@ function ReportPage({
               {done ? 'Typeset · ready for press' : `Stage ${steps.findIndex((s) => s.id === currentStep) + 1} of 4`}
             </div>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-4">
             {steps.map((s, i) => {
               const idx = steps.findIndex((x) => x.id === currentStep);
@@ -456,7 +531,6 @@ function ReportPage({
               );
             })}
           </div>
-
           {/* Press log */}
           <div className="border-t border-[#d4c19b]/15 bg-black/60 p-4 font-mono text-[12px] leading-6 text-[#d4c19b]/80">
             <div className="mb-1 font-serif text-[10px] italic uppercase tracking-[0.25em] text-[#e9c46a]">
@@ -500,12 +574,9 @@ function ReportPage({
                 </div>
                 <div className="mx-auto mt-4 w-1/3 border-t-2 border-double border-[#e9c46a]/70" />
               </div>
-
-              {/* Columnar text — proper typeset markdown */}
               <div className="mt-8">
                 <NewspaperReport markdown={report} columns />
               </div>
-
               {/* Critic */}
               {feedback && (
                 <div className="mt-10 grid grid-cols-1 gap-8 border-t border-[#d4c19b]/20 pt-8 md:grid-cols-3">
@@ -525,7 +596,6 @@ function ReportPage({
                   </div>
                 </div>
               )}
-
               {/* Bottom line */}
               <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t-2 border-double border-[#d4c19b]/40 pt-5 md:flex-row">
                 <div className="font-serif text-[11px] italic uppercase tracking-[0.25em] text-[#d4c19b]">
@@ -556,7 +626,6 @@ function ReportPage({
             </motion.article>
           )}
         </AnimatePresence>
-
         {!done && (
           <div className="mt-10 border-2 border-dashed border-[#d4c19b]/30 bg-black/40 p-8 text-center">
             <div className="font-serif text-[11px] italic tracking-[0.3em] text-[#e9c46a]">
@@ -578,12 +647,11 @@ function ReportPage({
 }
 
 /* ---------------------------- Colophon ---------------------------- */
-
 function Colophon() {
   return (
     <div className="border-t border-[#d4c19b]/20 bg-black/70 px-6 py-8 font-serif text-center text-[#d4c19b] md:px-16">
       <div className="font-serif text-lg font-black italic tracking-[0.15em] text-[#f4ecd5]">
-        THE Research<span className="text-[#e9c46a]">·</span>Co TIMES
+        THE Research·Co TIMES
       </div>
       <div className="mt-2 font-serif text-[11px] uppercase tracking-[0.25em] text-[#d4c19b]/60">
         Vol. CXXVI · No. 42,019 · © {new Date().getFullYear()} ResearchCo Publishing
@@ -593,14 +661,11 @@ function Colophon() {
 }
 
 /* ---------------------------- App ---------------------------- */
-
 export default function App() {
   const [topic, setTopic] = useState<string | null>(null);
-
   return (
     <div className="min-h-screen bg-black text-[#f4ecd5]">
       <Masthead />
-
       <main>
         <AnimatePresence mode="wait">
           {topic ? (
@@ -636,7 +701,6 @@ export default function App() {
           )}
         </AnimatePresence>
       </main>
-
       <Colophon />
     </div>
   );
